@@ -1,0 +1,73 @@
+version: '3.5'
+
+networks:
+  prefect:
+    name: prefect
+
+services:
+  # POSTGRES 14
+  postgres:
+    image: postgres:14
+    command:
+      - postgres
+      - -c
+      - max_connections=150
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DB}
+    healthcheck:
+      interval: 10s
+      retries: 60
+      start_period: 2s
+      test: pg_isready -q -d $${POSTGRES_DB} -U $${POSTGRES_USER} | grep "accepting connections" || exit 1
+      timeout: 2s
+    ports:
+    - published: 5433
+      target: 5432
+    restart: on-failure
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+    networks:
+      - prefect
+
+  # PREFECT SERVER
+  prefect-server:
+    image: ${PREFECT_SERVER_IMAGE}
+    command: ["prefect", "orion", "start"]
+    ports:
+      - 4000:4000
+    expose:
+      - 4000
+    depends_on:
+      postgres:
+        condition: service_started
+    volumes:
+      - ./volumes/prefect:/root/.prefect
+      - ./flows:/flows
+    environment:
+      PREFECT_ORION_API_HOST: 0.0.0.0
+      PREFECT_ORION_API_PORT: 4000
+      PREFECT_ORION_UI_API_URL: ${PREFECT_ORION_UI_API_URL}
+      PREFECT_ORION_DATABASE_CONNECTION_URL: postgresql+asyncpg://${PG_USER}:${PG_PASSWORD}@postgres:5432/${PG_DB}
+      PREFECT_ORION_ANALYTICS_ENABLED: "false"
+      PREFECT_LOGGING_SERVER_LEVEL: WARNING
+      PREFECT_API_URL: http://prefect-server:4000/api
+    networks:
+      - prefect
+
+  # PREFECT AGENT
+  prefect-agent:
+    image: ${PREFECT_AGENT_IMAGE}
+    command: ["prefect", "agent", "start", "-q", "default"]
+    depends_on:
+      prefect-server:
+        condition: service_started
+    environment:
+      PREFECT_API_URL: http://prefect-server:4000/api
+      PREFECT_LOGGING_LEVEL: DEBUG
+      DOCKER_HOST: unix://var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - prefect
