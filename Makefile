@@ -17,3 +17,6 @@ prefect-restart:
 prefect-reset:
 	@chmod +x scripts/prefect.sh
 	@./scripts/prefect.sh reset ENV=$(ENV)
+
+prefect-test:
+	pytest tests/
