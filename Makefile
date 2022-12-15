@@ -19,4 +19,4 @@ prefect-reset:
 	@./scripts/prefect.sh reset ENV=$(ENV)
 
 prefect-test:
-	pytest tests/
+	pytest tests/ -rP
