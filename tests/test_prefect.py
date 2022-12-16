@@ -1,9 +1,10 @@
 import requests
 import docker
 import pytest
+import os
 from config import PREFECT_ORION_UI_API_URL
 
-
+PROJECT_FOLDER_NAME = os.path.dirname(os.path.abspath(__file__)).split("/")[-2]
 DOCKER_CLIENT = docker.DockerClient(base_url="unix://var/run/docker.sock")
 RETRIES = 10
 DELAY = 1
@@ -18,7 +19,7 @@ def test_server():
 
 @pytest.mark.flaky(retries=RETRIES, delay=DELAY)
 def test_agent():
-    container = DOCKER_CLIENT.containers.get("prefect-docker-template-prefect-agent-1")
+    container = DOCKER_CLIENT.containers.get(f"{PROJECT_FOLDER_NAME}-prefect-agent-1")
     container_status = container.attrs["State"]["Status"]
 
     assert container_status == "running"
@@ -26,7 +27,7 @@ def test_agent():
 
 @pytest.mark.flaky(retries=RETRIES, delay=DELAY)
 def test_postgres():
-    container = DOCKER_CLIENT.containers.get("prefect-docker-template-postgres-1")
+    container = DOCKER_CLIENT.containers.get(f"{PROJECT_FOLDER_NAME}-postgres-1")
     container_status = container.attrs["State"]["Status"]
 
     assert container_status == "running"
