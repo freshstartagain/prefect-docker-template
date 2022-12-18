@@ -1,4 +1,7 @@
 name: Code Quality
+env:
+  GH_USER: ${{ secrets.GH_USER }}
+  GH_ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
 
 on: [push, pull_request]
 
@@ -21,18 +24,31 @@ jobs:
         python -m pip install --upgrade pip
         pip install black==22.10.0 isort==5.10.1 flake8==5.0.4
 
-    - name: Sort modules
-      run: |
-        isort .
-
     - name: Black format
       run: |
         black .
 
+    - name: Sort modules
+      run: |
+        isort .
+
     - name: Flake8 check
       run: |
         flake8 . --max-line-length=88 --select=E401,E711,E712,E713,E714,E721,E722,E901,F401,F402,F403,F405,F631,F632,F633,F811,F812,F821,F822,F841,F901,W191,W291,W292,W293,W602,W603,W604,W605,W606
-
+    
     - name: ShellCheck
       run: |
         shellcheck scripts/*.sh
+
+    - name: Check for modified files
+      id: git-check
+      run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
+
+    - name: Push changes
+      if: steps.git-check.outputs.modified == 'true' 
+      run: |
+        git config --global user.name '${{ env.GH_USER }}'
+        git config --global user.email '${{ env.GH_USER }}@users.noreply.github.com'
+        git remote set-url origin https://x-access-token:${{ env.GH_ACCESS_TOKEN }}@github.com/${{ github.repository }}
+        git commit -am "auto: isort and black format."
+        git push
