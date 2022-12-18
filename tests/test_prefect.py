@@ -1,7 +1,8 @@
-import requests
+import os
+
 import docker
 import pytest
-import os
+import requests
 from config import PREFECT_ORION_UI_API_URL
 
 PROJECT_FOLDER_NAME = os.path.dirname(os.path.abspath(__file__)).split("/")[-2]
